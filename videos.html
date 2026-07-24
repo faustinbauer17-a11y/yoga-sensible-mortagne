@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes vidéos — Yoga Sensible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f7f4ec; --ink:#23241f; --ink-soft:rgba(35,36,31,0.68);
+    --olive:#6b7156; --accent:#d8f23a; --accent-deep:#94b012; --line:rgba(35,36,31,0.13); --paper-deep:#f3ecd9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter', sans-serif;}
+  .wrap{max-width:900px; margin:0 auto; padding:48px 28px 80px;}
+  header{display:flex; justify-content:space-between; align-items:center; margin-bottom:48px;}
+  .mark{font-family:'Fraunces', serif; font-style:italic; font-size:20px; text-decoration:none; color:var(--ink);}
+  .signout{font-size:12.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); background:none; border:none; cursor:pointer;}
+  h1{font-family:'Fraunces', serif; font-weight:500; font-size:32px; margin:0 0 12px;}
+  p.sub{font-size:15px; color:var(--ink-soft); font-weight:300; max-width:560px; line-height:1.6;}
+
+  .state-card{
+    margin-top:36px; background:var(--paper-deep); border:1px solid var(--line); border-radius:6px;
+    padding:40px 36px; text-align:center;
+  }
+  .state-card h2{font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 12px;}
+  .state-card p{color:var(--ink-soft); font-size:14.5px; font-weight:300; max-width:420px; margin:0 auto 24px;}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; padding:14px 30px; border-radius:2px;
+    font-size:13px; letter-spacing:0.06em; text-transform:uppercase; text-decoration:none; font-weight:500;
+    border:1px solid var(--ink); background:var(--ink); color:var(--paper); cursor:pointer;
+  }
+  .btn:hover{background:var(--accent-deep); border-color:var(--accent-deep); color:var(--ink);}
+  .btn:disabled{opacity:0.55; cursor:not-allowed;}
+
+  .video-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:24px; margin-top:36px;}
+  .video-card{background:var(--paper-deep); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .video-card video{width:100%; display:block; background:#000; aspect-ratio:16/9;}
+  .video-card .meta{padding:16px 18px;}
+  .video-card h3{font-size:15px; margin:0 0 6px; font-weight:600;}
+  .video-card p{font-size:13px; color:var(--ink-soft); margin:0; font-weight:300; line-height:1.5;}
+
+  .hidden{display:none;}
+  .msg{font-size:13.5px; margin-top:16px; padding:12px 14px; border-radius:2px; background:#f3d9d3; color:#7a2c1d;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="index.html" class="mark">Yoga Sensible</a>
+    <button class="signout" id="signOutBtn">Se déconnecter</button>
+  </header>
+
+  <h1>Mes vidéos</h1>
+  <p class="sub">Retrouvez ici l'ensemble des séances de yoga sensible et danse, à pratiquer à votre rythme.</p>
+
+  <div id="loadingState"><p class="sub">Chargement…</p></div>
+
+  <div id="inactiveState" class="state-card hidden">
+    <h2>Accès réservé aux vidéos débloquées</h2>
+    <p>Votre compte n'a pas encore débloqué l'accès. Un paiement unique de 89€ vous donne accès à l'ensemble des vidéos, sans limite de durée.</p>
+    <button class="btn" id="subscribeBtn">Débloquer les vidéos — 89€</button>
+    <div id="checkoutMsg" class="msg hidden"></div>
+  </div>
+
+  <div id="activeState" class="hidden">
+    <div class="video-grid" id="videoGrid"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+  const SUPABASE_URL = 'https://jwqctwxkmdhsvuajyhfa.supabase.co';
+  const supabase = createClient(SUPABASE_URL, 'sb_publishable_6pfyNQ5zvKRz86XBlpaAKg_aBrbUkgu');
+
+  const loadingState = document.getElementById('loadingState');
+  const inactiveState = document.getElementById('inactiveState');
+  const activeState = document.getElementById('activeState');
+  const videoGrid = document.getElementById('videoGrid');
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    window.location.href = 'login.html';
+  }
+
+  document.getElementById('signOutBtn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  });
+
+  const { data: subscriber, error: subErr } = await supabase
+    .from('subscribers')
+    .select('status')
+    .eq('id', session.user.id)
+    .single();
+
+  loadingState.classList.add('hidden');
+
+  if (subErr || !subscriber || subscriber.status !== 'active') {
+    inactiveState.classList.remove('hidden');
+
+    document.getElementById('subscribeBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = 'Redirection…';
+      const checkoutMsg = document.getElementById('checkoutMsg');
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error(data.error || 'Erreur inconnue');
+        }
+      } catch (err) {
+        checkoutMsg.textContent = "Impossible de lancer le paiement pour le moment. Réessayez dans un instant.";
+        checkoutMsg.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = "Débloquer les vidéos — 89€";
+      }
+    });
+  } else {
+    activeState.classList.remove('hidden');
+
+    const { data: videos } = await supabase
+      .from('videos')
+      .select('id, title, description, storage_path')
+      .order('sort_order', { ascending: true });
+
+    if (!videos || videos.length === 0) {
+      videoGrid.innerHTML = '<p class="sub">Les vidéos seront ajoutées prochainement.</p>';
+    } else {
+      for (const v of videos) {
+        const { data: signed } = await supabase
+          .storage
+          .from('videos')
+          .createSignedUrl(v.storage_path, 3600);
+
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.innerHTML = `
+          <video controls preload="none" src="${signed?.signedUrl ?? ''}"></video>
+          <div class="meta">
+            <h3>${v.title}</h3>
+            <p>${v.description ?? ''}</p>
+          </div>
+        `;
+        videoGrid.appendChild(card);
+      }
+    }
+  }
+</script>
+</body>
+</html>

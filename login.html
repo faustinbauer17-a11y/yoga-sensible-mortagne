@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace élèves — Yoga Sensible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f7f4ec; --ink:#23241f; --ink-soft:rgba(35,36,31,0.68);
+    --olive:#6b7156; --accent-deep:#94b012; --line:rgba(35,36,31,0.13); --paper-deep:#f3ecd9;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100svh; display:flex; align-items:center; justify-content:center;
+    background:var(--paper); color:var(--ink); font-family:'Inter', sans-serif; padding:24px;
+  }
+  .card{width:100%; max-width:400px; background:var(--paper-deep); border:1px solid var(--line); border-radius:6px; padding:44px 36px;}
+  .mark{font-family:'Fraunces', serif; font-style:italic; font-size:22px; text-decoration:none; color:var(--ink); display:block; margin-bottom:8px;}
+  h1{font-family:'Fraunces', serif; font-weight:500; font-size:26px; margin:0 0 8px;}
+  p.sub{font-size:14px; color:var(--ink-soft); margin:0 0 28px; font-weight:300;}
+  form{display:grid; gap:14px;}
+  label{font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--olive); font-weight:600;}
+  input{
+    width:100%; padding:13px 14px; border-radius:2px; border:1px solid var(--line);
+    background:var(--paper); font-family:'Inter', sans-serif; font-size:14.5px; color:var(--ink); margin-top:6px;
+  }
+  button{
+    margin-top:8px; padding:14px; border-radius:2px; border:1px solid var(--ink);
+    background:var(--ink); color:var(--paper); font-size:13px; letter-spacing:0.06em; text-transform:uppercase;
+    font-weight:500; cursor:pointer;
+  }
+  button:hover{background:var(--accent-deep); border-color:var(--accent-deep); color:var(--ink);}
+  button:disabled{opacity:0.5; cursor:not-allowed;}
+  .switch{margin-top:20px; font-size:13.5px; text-align:center; color:var(--ink-soft);}
+  .switch button{all:unset; cursor:pointer; color:var(--accent-deep); font-weight:600; text-decoration:underline;}
+  .msg{font-size:13.5px; margin-top:16px; padding:12px 14px; border-radius:2px;}
+  .msg.error{background:#f3d9d3; color:#7a2c1d;}
+  .msg.ok{background:#e3ecc9; color:#4c5a1c;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <a href="index.html" class="mark">Yoga Sensible</a>
+    <h1 id="formTitle">Connexion élèves</h1>
+    <p class="sub" id="formSub">Accédez à votre espace vidéos.</p>
+
+    <form id="authForm">
+      <div>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" required autocomplete="email">
+      </div>
+      <div>
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" required minlength="6" autocomplete="current-password">
+      </div>
+      <button type="submit" id="submitBtn">Se connecter</button>
+    </form>
+
+    <div class="switch">
+      <span id="switchText">Pas encore de compte ?</span>
+      <button id="switchBtn" type="button">Créer un compte</button>
+    </div>
+
+    <div id="messageBox" class="msg hidden"></div>
+  </div>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+  const supabase = createClient(
+    'https://jwqctwxkmdhsvuajyhfa.supabase.co',
+    'sb_publishable_6pfyNQ5zvKRz86XBlpaAKg_aBrbUkgu'
+  );
+
+  let mode = 'login'; // or 'signup'
+
+  const form = document.getElementById('authForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const switchBtn = document.getElementById('switchBtn');
+  const switchText = document.getElementById('switchText');
+  const formTitle = document.getElementById('formTitle');
+  const formSub = document.getElementById('formSub');
+  const messageBox = document.getElementById('messageBox');
+
+  function showMessage(text, type) {
+    messageBox.textContent = text;
+    messageBox.className = 'msg ' + type;
+  }
+
+  switchBtn.addEventListener('click', () => {
+    mode = mode === 'login' ? 'signup' : 'login';
+    if (mode === 'signup') {
+      formTitle.textContent = 'Créer votre compte';
+      formSub.textContent = 'Créez votre compte, puis abonnez-vous pour accéder aux vidéos.';
+      submitBtn.textContent = 'Créer le compte';
+      switchText.textContent = 'Déjà un compte ?';
+      switchBtn.textContent = 'Se connecter';
+    } else {
+      formTitle.textContent = 'Connexion élèves';
+      formSub.textContent = 'Accédez à votre espace vidéos.';
+      submitBtn.textContent = 'Se connecter';
+      switchText.textContent = 'Pas encore de compte ?';
+      switchBtn.textContent = 'Créer un compte';
+    }
+    messageBox.className = 'msg hidden';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (mode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        showMessage(error.message, 'error');
+      } else {
+        showMessage('Compte créé — vous pouvez maintenant vous abonner depuis l\'espace vidéos.', 'ok');
+        setTimeout(() => { window.location.href = 'videos.html'; }, 1200);
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        showMessage('E-mail ou mot de passe incorrect.', 'error');
+      } else {
+        window.location.href = 'videos.html';
+      }
+    }
+    submitBtn.disabled = false;
+  });
+
+  // Already logged in? Skip straight to the videos page.
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) window.location.href = 'videos.html';
+  });
+</script>
+</body>
+</html>
