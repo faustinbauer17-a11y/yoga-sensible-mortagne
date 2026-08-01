@@ -42,6 +42,13 @@
   .video-card h3{font-size:15px; margin:0 0 6px; font-weight:600;}
   .video-card p{font-size:13px; color:var(--ink-soft); margin:0; font-weight:300; line-height:1.5;}
 
+  .plan-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:20px; margin-top:32px;}
+  .plan-card{background:var(--paper-deep); border:1px solid var(--line); border-radius:6px; padding:28px 24px; text-align:center;}
+  .plan-card .plan-name{font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--olive); font-weight:600; margin-bottom:10px;}
+  .plan-card .plan-price{font-family:'Fraunces', serif; font-weight:500; font-size:32px; color:var(--ink); line-height:1;}
+  .plan-card .plan-unit{font-size:12px; color:var(--ink-soft); margin:6px 0 20px;}
+  .plan-card .btn{width:100%; justify-content:center;}
+
   .hidden{display:none;}
   .msg{font-size:13.5px; margin-top:16px; padding:12px 14px; border-radius:2px; background:#f3d9d3; color:#7a2c1d;}
 </style>
@@ -60,8 +67,27 @@
 
   <div id="inactiveState" class="state-card hidden">
     <h2>Accès réservé aux vidéos débloquées</h2>
-    <p>Votre compte n'a pas encore débloqué l'accès. Un paiement unique de 89€ vous donne accès à l'ensemble des vidéos, sans limite de durée.</p>
-    <button class="btn" id="subscribeBtn">Débloquer les vidéos — 89€</button>
+    <p>Choisissez la formule qui vous convient pour débloquer l'ensemble des vidéos.</p>
+    <div class="plan-grid">
+      <div class="plan-card">
+        <div class="plan-name">Paiement unique</div>
+        <div class="plan-price">89€</div>
+        <div class="plan-unit">accès à vie</div>
+        <button class="btn plan-btn" data-plan="one_time">Débloquer</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Mensuel</div>
+        <div class="plan-price">35€</div>
+        <div class="plan-unit">par mois, sans engagement</div>
+        <button class="btn plan-btn" data-plan="monthly">S'abonner</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Trimestriel</div>
+        <div class="plan-price">30€</div>
+        <div class="plan-unit">par mois, facturé 90€/3 mois</div>
+        <button class="btn plan-btn" data-plan="quarterly">S'abonner</button>
+      </div>
+    </div>
     <div id="checkoutMsg" class="msg hidden"></div>
   </div>
 
@@ -73,8 +99,8 @@
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-  const SUPABASE_URL = 'https://jwqctwxkmdhsvuajyhfa.supabase.co';
-  const supabase = createClient(SUPABASE_URL, 'sb_publishable_6pfyNQ5zvKRz86XBlpaAKg_aBrbUkgu');
+  const SUPABASE_URL = 'https://yneqerdsgvxuhbyzquof.supabase.co';
+  const supabase = createClient(SUPABASE_URL, 'sb_publishable_jp2MkMgwvkdOBH2E9R1NSQ_OVmqgwKe');
 
   const loadingState = document.getElementById('loadingState');
   const inactiveState = document.getElementById('inactiveState');
@@ -102,31 +128,35 @@
   if (subErr || !subscriber || subscriber.status !== 'active') {
     inactiveState.classList.remove('hidden');
 
-    document.getElementById('subscribeBtn').addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
-      btn.disabled = true;
-      btn.textContent = 'Redirection…';
-      const checkoutMsg = document.getElementById('checkoutMsg');
-      try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          throw new Error(data.error || 'Erreur inconnue');
+    document.querySelectorAll('.plan-btn').forEach((btn) => {
+      const originalLabel = btn.textContent;
+      btn.addEventListener('click', async (e) => {
+        const plan = btn.dataset.plan;
+        btn.disabled = true;
+        btn.textContent = 'Redirection…';
+        const checkoutMsg = document.getElementById('checkoutMsg');
+        try {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ plan }),
+          });
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            throw new Error(data.error || 'Erreur inconnue');
+          }
+        } catch (err) {
+          checkoutMsg.textContent = "Impossible de lancer le paiement pour le moment. Réessayez dans un instant.";
+          checkoutMsg.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = originalLabel;
         }
-      } catch (err) {
-        checkoutMsg.textContent = "Impossible de lancer le paiement pour le moment. Réessayez dans un instant.";
-        checkoutMsg.classList.remove('hidden');
-        btn.disabled = false;
-        btn.textContent = "Débloquer les vidéos — 89€";
-      }
+      });
     });
   } else {
     activeState.classList.remove('hidden');

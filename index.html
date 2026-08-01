@@ -237,11 +237,17 @@
 
   /* ORDER / PRICING */
   section.order{background:var(--paper-deep); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .price-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  @media (max-width:860px){.price-grid{grid-template-columns:1fr;}}
   .price-card{
     background:var(--ink); color:var(--paper);
     border-radius:4px; padding:56px 48px;
     display:grid; grid-template-columns:1fr auto; gap:48px; align-items:center;
   }
+  .price-card--stack{
+    grid-template-columns:1fr; text-align:left; padding:36px 32px; gap:24px;
+  }
+  .price-card--stack .price-tag{border-left:none; border-top:1px solid rgba(247,244,236,0.2); padding-left:0; padding-top:22px; text-align:left;}
   @media (max-width:700px){.price-card{grid-template-columns:1fr; text-align:left; padding:40px 30px;}}
   .price-card .kicker{color:var(--accent);}
   .price-card h3{font-family:'Fraunces', serif; font-weight:500; font-size:26px; margin:0 0 14px;}
@@ -422,17 +428,41 @@
     <div class="section-head center">
       <div class="kicker">Pour commander</div>
       <h2>Débloquer la <em>vidéothèque</em></h2>
-      <p class="lede">Un paiement unique donne un accès permanent à l'ensemble des vidéos. Créez votre compte puis débloquez l'accès en un clic.</p>
+      <p class="lede">Trois formules pour accéder à l'ensemble des vidéos. Créez votre compte puis débloquez l'accès en un clic.</p>
     </div>
-    <div class="price-card">
-      <div>
-        <div class="kicker">Paiement unique</div>
-        <h3>Vidéothèque yoga danse</h3>
-        <p>Accès illimité, sans durée limitée, aux ~20 séances de yoga sensible et danse filmées — à pratiquer où et quand vous voulez.</p>
+    <div class="price-grid">
+      <div class="price-card price-card--stack">
+        <div>
+          <div class="kicker">Paiement unique</div>
+          <h3>Accès à vie</h3>
+          <p>Un seul paiement, accès permanent aux ~20 séances filmées.</p>
+        </div>
+        <div class="price-tag">
+          <div class="price-num">89€</div>
+          <div class="price-unit">une fois</div>
+        </div>
       </div>
-      <div class="price-tag">
-        <div class="price-num">89€</div>
-        <div class="price-unit">paiement unique</div>
+      <div class="price-card price-card--stack">
+        <div>
+          <div class="kicker">Mensuel</div>
+          <h3>Sans engagement</h3>
+          <p>Accès reconductible chaque mois, résiliable à tout moment.</p>
+        </div>
+        <div class="price-tag">
+          <div class="price-num">35€</div>
+          <div class="price-unit">par mois</div>
+        </div>
+      </div>
+      <div class="price-card price-card--stack">
+        <div>
+          <div class="kicker">Trimestriel</div>
+          <h3>Le plus économique</h3>
+          <p>Facturé 90€ tous les 3 mois, soit 30€/mois.</p>
+        </div>
+        <div class="price-tag">
+          <div class="price-num">30€</div>
+          <div class="price-unit">par mois</div>
+        </div>
       </div>
     </div>
     <div class="practical-strip">
@@ -441,8 +471,8 @@
         <span class="val">Vidéos à la demande</span>
       </div>
       <div class="practical-cell">
-        <span class="label">Accès</span>
-        <span class="val">Illimité dans le temps</span>
+        <span class="label">Résiliation</span>
+        <span class="val">Libre pour les formules mensuelles</span>
       </div>
       <div class="practical-cell">
         <span class="label">Niveau</span>
