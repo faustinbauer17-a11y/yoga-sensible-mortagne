@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administration — Yoga Sensible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf6ec; --paper-deep:#f3ecd9; --ink:#23241f; --ink-soft:rgba(35,36,31,0.68);
+    --olive:#6b7156; --accent:#d8f23a; --accent-deep:#94b012; --line:rgba(35,36,31,0.13);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter', sans-serif;}
+  .wrap{max-width:920px; margin:0 auto; padding:48px 28px 80px;}
+  header{display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;}
+  .mark{font-family:'Fraunces', serif; font-style:italic; font-size:20px; text-decoration:none; color:var(--ink);}
+  .signout{font-size:12.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); background:none; border:none; cursor:pointer;}
+  h1{font-family:'Fraunces', serif; font-weight:500; font-size:30px; margin:0 0 10px;}
+  p.sub{font-size:14.5px; color:var(--ink-soft); font-weight:300; max-width:560px; line-height:1.6;}
+
+  .msg{font-size:13.5px; margin:20px 0; padding:12px 14px; border-radius:2px;}
+  .msg.error{background:#f3d9d3; color:#7a2c1d;}
+  .hidden{display:none;}
+
+  table{width:100%; border-collapse:collapse; margin-top:28px; font-size:14px;}
+  th{text-align:left; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--olive); font-weight:600; padding:10px 12px; border-bottom:1px solid var(--line);}
+  td{padding:12px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tr:hover td{background:var(--paper-deep);}
+
+  .pill{display:inline-block; padding:4px 10px; border-radius:100px; font-size:11.5px; font-weight:600; letter-spacing:0.03em;}
+  .pill.inactive{background:#f3d9d3; color:#7a2c1d;}
+  .pill.active{background:#e3ecc9; color:#4c5a1c;}
+
+  select, button.action{
+    font-family:'Inter', sans-serif; font-size:13px; padding:8px 12px; border-radius:2px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink);
+  }
+  button.action{
+    border:1px solid var(--ink); background:var(--ink); color:var(--paper); cursor:pointer; font-weight:500;
+  }
+  button.action:hover{background:var(--accent-deep); border-color:var(--accent-deep); color:var(--ink);}
+  button.action:disabled{opacity:0.5; cursor:not-allowed;}
+
+  .empty{color:var(--ink-soft); font-size:14px; font-weight:300; margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="index.html" class="mark">Yoga Sensible</a>
+    <button class="signout" id="signOutBtn">Se déconnecter</button>
+  </header>
+
+  <h1>Administration des accès</h1>
+  <p class="sub">Retrouvez ici les élèves ayant demandé un accès. Après réception de leur virement, activez leur accès en un clic.</p>
+
+  <div id="deniedMsg" class="msg error hidden">Ce compte n'a pas les droits d'administration.</div>
+  <div id="loadingMsg" class="sub">Chargement…</div>
+
+  <table id="subsTable" class="hidden">
+    <thead>
+      <tr>
+        <th>E-mail</th>
+        <th>Formule demandée</th>
+        <th>Note</th>
+        <th>Statut</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="subsBody"></tbody>
+  </table>
+  <p id="emptyMsg" class="empty hidden">Aucune élève pour le moment.</p>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+  const SUPABASE_URL = 'https://yneqerdsgvxuhbyzquof.supabase.co';
+  const supabase = createClient(SUPABASE_URL, 'sb_publishable_jp2MkMgwvkdOBH2E9R1NSQ_OVmqgwKe');
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) window.location.href = 'login.html';
+
+  document.getElementById('signOutBtn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  });
+
+  const loadingMsg = document.getElementById('loadingMsg');
+  const deniedMsg = document.getElementById('deniedMsg');
+  const table = document.getElementById('subsTable');
+  const tbody = document.getElementById('subsBody');
+  const emptyMsg = document.getElementById('emptyMsg');
+
+  const planLabel = { one_time: 'Paiement unique (89€)', monthly: 'Mensuel (35€/mois)', quarterly: 'Trimestriel (90€/3 mois)' };
+
+  const { data: rows, error } = await supabase
+    .from('subscribers')
+    .select('id, email, status, requested_plan, payment_note')
+    .order('created_at', { ascending: false });
+
+  loadingMsg.classList.add('hidden');
+
+  if (error || !rows) {
+    deniedMsg.classList.remove('hidden');
+  } else if (rows.length === 0) {
+    emptyMsg.classList.remove('hidden');
+  } else {
+    table.classList.remove('hidden');
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.email}</td>
+        <td>${planLabel[row.requested_plan] ?? '—'}</td>
+        <td>${row.payment_note ? row.payment_note : '—'}</td>
+        <td><span class="pill ${row.status === 'active' ? 'active' : 'inactive'}">${row.status === 'active' ? 'Actif' : 'Inactif'}</span></td>
+        <td></td>
+      `;
+      const actionCell = tr.querySelector('td:last-child');
+      const btn = document.createElement('button');
+      btn.className = 'action';
+      const isActive = row.status === 'active';
+      btn.textContent = isActive ? 'Désactiver' : 'Activer';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const newStatus = isActive ? 'inactive' : 'active';
+        const { error: updErr } = await supabase
+          .from('subscribers')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', row.id);
+        if (!updErr) {
+          window.location.reload();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Erreur, réessayer';
+        }
+      });
+      actionCell.appendChild(btn);
+      tbody.appendChild(tr);
+    }
+  }
+</script>
+</body>
+</html>

@@ -51,6 +51,17 @@
 
   .hidden{display:none;}
   .msg{font-size:13.5px; margin-top:16px; padding:12px 14px; border-radius:2px; background:#f3d9d3; color:#7a2c1d;}
+  .msg.ok{background:#e3ecc9; color:#4c5a1c;}
+
+  .bank-box{
+    margin-top:28px; background:var(--paper); border:1px solid var(--line); border-radius:6px;
+    padding:26px 28px; text-align:left; max-width:440px; margin-left:auto; margin-right:auto;
+  }
+  .bank-box p{font-size:14.5px; color:var(--ink-soft); font-weight:300;}
+  .bank-box textarea{
+    width:100%; min-height:70px; padding:12px 14px; border-radius:2px; border:1px solid var(--line);
+    background:var(--paper-deep); font-family:'Inter', sans-serif; font-size:14px; color:var(--ink); resize:vertical;
+  }
 </style>
 </head>
 <body>
@@ -61,33 +72,44 @@
   </header>
 
   <h1>Mes vidéos</h1>
-  <p class="sub">Retrouvez ici l'ensemble des séances de yoga sensible et danse, à pratiquer à votre rythme.</p>
+  <p class="sub">Retrouvez ici l'ensemble des séances de yoga sensible, pensées pour nourrir votre pratique de la danse.</p>
 
   <div id="loadingState"><p class="sub">Chargement…</p></div>
 
   <div id="inactiveState" class="state-card hidden">
     <h2>Accès réservé aux vidéos débloquées</h2>
-    <p>Choisissez la formule qui vous convient pour débloquer l'ensemble des vidéos.</p>
+    <p>Choisissez la formule qui vous convient, puis réglez par virement bancaire. Votre accès sera activé manuellement dès réception du paiement (sous 24-48h).</p>
     <div class="plan-grid">
       <div class="plan-card">
         <div class="plan-name">Paiement unique</div>
         <div class="plan-price">89€</div>
         <div class="plan-unit">accès à vie</div>
-        <button class="btn plan-btn" data-plan="one_time">Débloquer</button>
+        <button class="btn plan-btn" data-plan="one_time">Je choisis cette formule</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">Mensuel</div>
         <div class="plan-price">35€</div>
         <div class="plan-unit">par mois, sans engagement</div>
-        <button class="btn plan-btn" data-plan="monthly">S'abonner</button>
+        <button class="btn plan-btn" data-plan="monthly">Je choisis cette formule</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">Trimestriel</div>
         <div class="plan-price">30€</div>
         <div class="plan-unit">par mois, facturé 90€/3 mois</div>
-        <button class="btn plan-btn" data-plan="quarterly">S'abonner</button>
+        <button class="btn plan-btn" data-plan="quarterly">Je choisis cette formule</button>
       </div>
     </div>
+
+    <div id="bankDetails" class="bank-box hidden">
+      <div class="kicker" style="margin-bottom:10px;">Coordonnées bancaires</div>
+      <p style="margin:0 0 6px;">IBAN : <strong>[ À compléter ]</strong></p>
+      <p style="margin:0 0 6px;">BIC : <strong>[ À compléter ]</strong></p>
+      <p style="margin:0 0 18px;">Merci d'indiquer votre e-mail en référence du virement.</p>
+      <textarea id="paymentNote" placeholder="Facultatif : précisez la date du virement ou toute information utile"></textarea>
+      <button class="btn btn-solid" id="confirmRequestBtn" style="margin-top:14px;">J'ai effectué le virement</button>
+    </div>
+
+    <div id="requestSentMsg" class="msg ok hidden">Merci ! Votre demande a bien été enregistrée. L'accès sera activé dès réception du virement.</div>
     <div id="checkoutMsg" class="msg hidden"></div>
   </div>
 
@@ -128,35 +150,45 @@
   if (subErr || !subscriber || subscriber.status !== 'active') {
     inactiveState.classList.remove('hidden');
 
+    let selectedPlan = null;
+    const bankDetails = document.getElementById('bankDetails');
+    const checkoutMsg = document.getElementById('checkoutMsg');
+    const requestSentMsg = document.getElementById('requestSentMsg');
+
     document.querySelectorAll('.plan-btn').forEach((btn) => {
-      const originalLabel = btn.textContent;
-      btn.addEventListener('click', async (e) => {
-        const plan = btn.dataset.plan;
-        btn.disabled = true;
-        btn.textContent = 'Redirection…';
-        const checkoutMsg = document.getElementById('checkoutMsg');
-        try {
-          const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ plan }),
-          });
-          const data = await res.json();
-          if (data.url) {
-            window.location.href = data.url;
-          } else {
-            throw new Error(data.error || 'Erreur inconnue');
-          }
-        } catch (err) {
-          checkoutMsg.textContent = "Impossible de lancer le paiement pour le moment. Réessayez dans un instant.";
-          checkoutMsg.classList.remove('hidden');
-          btn.disabled = false;
-          btn.textContent = originalLabel;
-        }
+      btn.addEventListener('click', () => {
+        selectedPlan = btn.dataset.plan;
+        document.querySelectorAll('.plan-btn').forEach(b => b.textContent = "Je choisis cette formule");
+        btn.textContent = "Formule sélectionnée ✓";
+        bankDetails.classList.remove('hidden');
+        requestSentMsg.classList.add('hidden');
+        checkoutMsg.classList.add('hidden');
       });
+    });
+
+    document.getElementById('confirmRequestBtn').addEventListener('click', async () => {
+      const confirmBtn = document.getElementById('confirmRequestBtn');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Envoi…';
+      const note = document.getElementById('paymentNote').value.trim();
+      const { error: reqErr } = await supabase
+        .from('subscribers')
+        .update({
+          requested_plan: selectedPlan,
+          payment_note: note || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', session.user.id);
+
+      if (reqErr) {
+        checkoutMsg.textContent = "Impossible d'enregistrer votre demande pour le moment. Réessayez dans un instant.";
+        checkoutMsg.classList.remove('hidden');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "J'ai effectué le virement";
+      } else {
+        requestSentMsg.classList.remove('hidden');
+        bankDetails.classList.add('hidden');
+      }
     });
   } else {
     activeState.classList.remove('hidden');
