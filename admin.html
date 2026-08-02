@@ -7,9 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://yneqerdsgvxuhbyzquof.supabase.co">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://esm.sh" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
 <style>
   :root{
     --paper:#faf6ec; --paper-deep:#f3ecd9; --ink:#23241f; --ink-soft:rgba(35,36,31,0.68);
@@ -79,13 +78,16 @@
 </div>
 
 <script type="module">
-  const { createClient } = window.supabase;
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
   const SUPABASE_URL = 'https://yneqerdsgvxuhbyzquof.supabase.co';
   const supabase = createClient(SUPABASE_URL, 'sb_publishable_jp2MkMgwvkdOBH2E9R1NSQ_OVmqgwKe');
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) window.location.href = 'login.html';
+  if (!session) {
+    window.location.href = 'login.html';
+    throw new Error('Redirection vers la connexion');
+  }
 
   document.getElementById('signOutBtn').addEventListener('click', async () => {
     await supabase.auth.signOut();
