@@ -6,7 +6,10 @@
 <title>Espace élèves — Yoga Sensible</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://yneqerdsgvxuhbyzquof.supabase.co">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
 <style>
   :root{
     --paper:#f7f4ec; --ink:#23241f; --ink-soft:rgba(35,36,31,0.68);
@@ -68,10 +71,9 @@
     <div id="messageBox" class="msg hidden"></div>
   </div>
 
-<script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-  const supabase = createClient(
+<script>
+  const { createClient } = supabase;
+  const sb = createClient(
     'https://yneqerdsgvxuhbyzquof.supabase.co',
     'sb_publishable_jp2MkMgwvkdOBH2E9R1NSQ_OVmqgwKe'
   );
@@ -112,30 +114,36 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = mode === 'signup' ? 'Création…' : 'Connexion…';
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await sb.auth.signUp({ email, password });
       if (error) {
         showMessage(error.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
       } else {
-        showMessage('Compte créé — vous pouvez maintenant vous abonner depuis l\'espace vidéos.', 'ok');
-        setTimeout(() => { window.location.href = 'videos.html'; }, 1200);
+        submitBtn.textContent = 'Redirection…';
+        window.location.href = 'videos.html';
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) {
         showMessage('E-mail ou mot de passe incorrect.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
       } else {
+        submitBtn.textContent = 'Redirection…';
         window.location.href = 'videos.html';
       }
     }
-    submitBtn.disabled = false;
   });
 
   // Already logged in? Skip straight to the videos page.
-  supabase.auth.getSession().then(({ data }) => {
+  sb.auth.getSession().then(({ data }) => {
     if (data.session) window.location.href = 'videos.html';
   });
 </script>
